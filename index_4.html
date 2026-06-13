@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phrase Roll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Caveat:wght@500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E7E4D8; --paper-deep:#DEDACB;
+    --ink:#2B2E2B; --ink-soft:#5A5E58;
+    --film-green:#6E8B7E; --film-cyan:#9DB4B0;
+    --date:#D98A4E; --leak:#C77B52;
+    --line:rgba(43,46,43,.16); --shadow:rgba(43,46,43,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"DM Mono","Zen Maru Gothic",monospace; background:var(--paper); color:var(--ink);
+    min-height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:22px 16px 36px; position:relative; overflow-x:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:50; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  body::after{
+    content:""; position:fixed; top:-10%; right:-12%; width:55vw; height:38vh;
+    pointer-events:none; z-index:0;
+    background:radial-gradient(ellipse at top right, rgba(199,123,82,.22), transparent 60%);
+    mix-blend-mode:multiply;
+  }
+
+  header{
+    width:100%; max-width:440px; display:flex; align-items:center;
+    justify-content:space-between; margin-bottom:14px; z-index:2;
+  }
+  .wordmark{
+    font-family:"Caveat",cursive; font-size:28px; font-weight:700; line-height:1;
+    color:var(--ink); transform:rotate(-1.5deg);
+  }
+  .iso{ font-size:9px; letter-spacing:.14em; color:var(--ink-soft); text-align:right; }
+  .iso b{color:var(--film-green); font-weight:500;}
+
+  .catbar{
+    width:100%; max-width:440px; z-index:2; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .catbar .cb-label{
+    font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.22em;
+    color:var(--film-green); flex:0 0 auto;
+  }
+  .cb-select{ position:relative; flex:1; }
+  .cb-select select{
+    width:100%; appearance:none; -webkit-appearance:none;
+    font-family:"Zen Maru Gothic",sans-serif; font-size:15px; font-weight:500;
+    color:var(--ink); background:var(--paper-deep);
+    border:1px solid var(--line); border-radius:4px;
+    padding:12px 40px 12px 15px; cursor:pointer;
+  }
+  .cb-select select:focus{ outline:none; border-color:var(--film-green); }
+  .cb-select::after{
+    content:"▾"; position:absolute; right:15px; top:50%; transform:translateY(-50%);
+    pointer-events:none; color:var(--film-green); font-size:13px;
+  }
+
+  .stage{ width:100%; max-width:440px; z-index:2; position:relative; }
+  .frame{
+    background:#222421; border-radius:4px; padding:8px 0;
+    box-shadow:0 18px 40px -22px rgba(0,0,0,.6); position:relative;
+  }
+  .perf{ display:flex; justify-content:space-between; padding:0 10px; height:13px; align-items:center; }
+  .perf span{ width:13px; height:9px; border-radius:2px; background:var(--paper); opacity:.85; }
+  .strip-meta{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:5px 14px 3px; font-size:10px; letter-spacing:.18em; color:var(--film-cyan);
+  }
+  .frameno{color:var(--paper); opacity:.85;}
+  .datestamp{ color:var(--date); text-shadow:0 0 6px rgba(217,138,78,.5); font-weight:500; letter-spacing:.1em; }
+
+  .plate{
+    margin:4px 8px 6px; background:var(--paper); border-radius:2px; min-height:186px;
+    padding:28px 22px 26px; display:flex; flex-direction:column; justify-content:center;
+    gap:22px; position:relative; overflow:hidden;
+  }
+  .plate .flash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+  .plate.shooting .flash{ animation:flash .5s ease-out; }
+  @keyframes flash{ 0%{opacity:0;} 8%{opacity:.85;} 100%{opacity:0;} }
+
+  .row{ position:relative; }
+  .row .lang{
+    font-family:"DM Mono",monospace; font-size:9px; letter-spacing:.22em;
+    color:var(--film-green); margin-bottom:5px; display:flex; align-items:center; gap:7px;
+  }
+  .row .lang .tag{ color:var(--ink-soft); font-family:"Zen Maru Gothic","DM Mono",sans-serif; letter-spacing:.06em; }
+  .row .lang::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .row .phrase{ cursor:pointer; transition:color .18s, transform .18s; line-height:1.3; }
+  .row .phrase:active{ transform:scale(.99); }
+  .row.en .phrase{ font-family:"Caveat",cursive; font-weight:700; font-size:34px; color:var(--ink); }
+  .row.ja .phrase{ font-family:"Zen Maru Gothic",sans-serif; font-weight:500; font-size:25px; color:var(--ink); }
+  .row .phrase:hover{ color:var(--leak); }
+  .row .copied-tag{
+    position:absolute; right:0; top:0; font-size:9px; letter-spacing:.1em;
+    color:var(--film-green); opacity:0; transform:translateY(-2px); transition:opacity .2s;
+  }
+  .row .copied-tag.show{ opacity:1; }
+  .plate.developing .row{ animation:develop .7s ease-out both; }
+  .plate.developing .row.ja{ animation-delay:.1s; }
+  @keyframes develop{
+    from{ opacity:0; filter:blur(6px); transform:translateY(6px); }
+    to{ opacity:1; filter:blur(0); transform:none; }
+  }
+
+  .controls{ width:100%; max-width:440px; margin-top:16px; z-index:2; display:flex; gap:9px; }
+  button{ font-family:"DM Mono",monospace; cursor:pointer; border:none; border-radius:3px; transition:transform .12s, background .2s, color .2s; }
+  button:active{ transform:translateY(1px) scale(.99); }
+  .shutter{
+    flex:1; background:var(--ink); color:var(--paper); padding:15px 12px; font-size:12px;
+    letter-spacing:.12em; display:flex; align-items:center; justify-content:center; gap:9px;
+    font-family:"Zen Maru Gothic","DM Mono",sans-serif; font-weight:500;
+  }
+  .shutter:hover{ background:#383b37; }
+  .shutter .dot{
+    width:11px; height:11px; border-radius:50%; border:2px solid var(--date); flex:0 0 auto;
+    box-shadow:0 0 0 2px var(--ink), 0 0 8px rgba(217,138,78,.6);
+  }
+  .icon-btn{
+    width:50px; background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    font-size:18px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .icon-btn:hover{ border-color:var(--film-green); color:var(--film-green); }
+  .icon-btn.faved{ color:var(--leak); border-color:var(--leak); background:rgba(199,123,82,.08); }
+  .icon-btn.copyset{ font-size:11px; letter-spacing:.06em; width:auto; padding:0 14px; }
+
+  .fav-section{ width:100%; max-width:440px; margin-top:36px; z-index:2; }
+  .fav-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:14px;
+  }
+  .fav-head h2{ font-family:"Caveat",cursive; font-size:24px; font-weight:700; color:var(--ink); transform:rotate(-1deg); }
+  .fav-head .count{ font-size:10px; letter-spacing:.16em; color:var(--film-green); }
+  .fav-empty{ font-family:"Zen Maru Gothic","DM Mono",sans-serif; font-size:12px; line-height:2; color:var(--ink-soft); letter-spacing:.04em; text-align:center; padding:24px 0; }
+  .fav-card{
+    background:var(--paper-deep); border-left:3px solid var(--film-green); border-radius:2px;
+    padding:13px 15px; margin-bottom:9px; display:flex; flex-direction:column; gap:4px;
+    position:relative; animation:slideIn .35s ease-out both;
+  }
+  @keyframes slideIn{ from{opacity:0; transform:translateX(-6px);} to{opacity:1; transform:none;} }
+  .fav-card .fen{ font-family:"Caveat",cursive; font-weight:700; font-size:23px; color:var(--ink); padding-right:64px; line-height:1.1; }
+  .fav-card .fja{ font-family:"Zen Maru Gothic",sans-serif; font-weight:500; font-size:14px; color:var(--ink-soft); }
+  .fav-actions{ position:absolute; right:9px; top:11px; display:flex; gap:4px; }
+  .fav-actions button{ background:transparent; border:none; color:var(--ink-soft); font-size:11px; letter-spacing:.04em; padding:4px 5px; }
+  .fav-actions button:hover{ color:var(--leak); }
+
+  footer{
+    margin-top:30px; font-family:"Zen Maru Gothic","DM Mono",sans-serif; font-size:11px;
+    letter-spacing:.04em; color:var(--ink-soft); text-align:center; z-index:2; line-height:2; max-width:440px;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    font-family:"Zen Maru Gothic","DM Mono",sans-serif;
+    background:var(--ink); color:var(--paper); font-size:12px; letter-spacing:.06em;
+    padding:11px 20px; border-radius:3px; opacity:0; pointer-events:none; transition:.25s; z-index:80;
+    max-width:88vw; text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important;} }
+  :focus-visible{ outline:2px solid var(--film-green); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="wordmark">phrase roll</div>
+    <div class="iso">FILM <b>400</b><br>1 FRAME / 1 PHRASE</div>
+  </header>
+
+  <div class="catbar">
+    <span class="cb-label">CATEGORY</span>
+    <div class="cb-select">
+      <select id="catSelect" aria-label="カテゴリを選ぶ">
+        <option value="all">すべて</option>
+        <option value="daily">日常</option>
+        <option value="natural">やさしい</option>
+        <option value="photo">写真</option>
+        <option value="hand">手書き</option>
+        <option value="retro">レトロ</option>
+        <option value="karhu">カルフ</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="frame">
+      <div class="perf" id="perfTop"></div>
+      <div class="strip-meta">
+        <span class="frameno" id="frameNo">FRAME 001</span>
+        <span class="datestamp" id="dateStamp">'26 6 13</span>
+      </div>
+      <div class="plate" id="plate">
+        <div class="flash"></div>
+        <div class="row en">
+          <div class="lang">PHRASE / EN <span class="tag" id="catTag"></span></div>
+          <div class="phrase" data-lang="en" id="pen">press the shutter</div>
+          <span class="copied-tag" id="ten">COPIED</span>
+        </div>
+        <div class="row ja">
+          <div class="lang">日本語 / JP</div>
+          <div class="phrase" data-lang="ja" id="pja">シャッターを切って</div>
+          <span class="copied-tag" id="tja">COPIED</span>
+        </div>
+      </div>
+      <div class="perf" id="perfBot"></div>
+    </div>
+
+    <div class="controls">
+      <button class="shutter" id="shutter"><span class="dot"></span>つぎの一枚を現像</button>
+      <button class="icon-btn copyset" id="copySet">SET COPY</button>
+      <button class="icon-btn" id="favBtn" aria-label="お気に入り">♡</button>
+    </div>
+  </div>
+
+  <section class="fav-section">
+    <div class="fav-head">
+      <h2>my roll</h2>
+      <span class="count" id="favCount">0 SAVED</span>
+    </div>
+    <div id="favList">
+      <div class="fav-empty">まだ一枚もありません。<br>気に入ったフレーズを ♡ で巻き取って。</div>
+    </div>
+  </section>
+
+  <footer id="footer">
+    タップで各行をコピー / SET COPY で2行まとめて<br>
+    投稿・カレンダー制作にそのまま貼り付けられます
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   ▼ フレーズの置き場：Googleスプレッドシート
+   ここのIDのスプシを読み込みます。シートを更新すれば全員に反映。
+   ============================================================ */
+const SHEET_ID = "1or1S3uegnsFOH4LSF-CcefmYfoL2ZFGKRT1o2pp5tzU";
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv";
+
+/* スプシが読めなかったときの予備（最低限これで動く） */
+const FALLBACK_PHRASES = [
+  {en:"Layered in Lines",ja:"線を重ねて",category:"karhu"},
+  {en:"Light and Solitude",ja:"光と孤独と",category:"karhu"},
+  {en:"The Space Between",ja:"余白のあいだ",category:"karhu"},
+  {en:"Drawn in Silence",ja:"静けさを描く",category:"karhu"},
+  {en:"Where Light Rests",ja:"光のとどまる場所",category:"karhu"},
+  {en:"One Single Line",ja:"線を一本",category:"karhu"},
+  {en:"Carry the Light",ja:"光をのせて",category:"karhu"},
+  {en:"A Warm Solitude",ja:"あたたかい孤独",category:"karhu"},
+  {en:"In the Empty Space",ja:"余白の中で",category:"karhu"},
+  {en:"Traced by Hand",ja:"手でなぞる",category:"karhu"},
+  {en:"Only the Wind",ja:"風の音だけ",category:"karhu"},
+  {en:"Light and Shadow",ja:"光と影と",category:"karhu"},
+  {en:"After the Snow",ja:"雪のあとで",category:"karhu"},
+  {en:"Gather the Light",ja:"光をひろう",category:"karhu"},
+  {en:"Just Here, Now",ja:"ただ、ここに",category:"karhu"},
+  {en:"Slow Morning",ja:"ゆっくりの朝",category:"daily"},
+  {en:"Coffee & Calm",ja:"珈琲と静けさ",category:"daily"},
+  {en:"Tiny Moments",ja:"小さな瞬間",category:"daily"},
+  {en:"Little Break",ja:"ひと休み",category:"daily"},
+  {en:"Weekend Mood",ja:"週末の気分",category:"daily"},
+  {en:"Bloom Gently",ja:"そっと咲く",category:"natural"},
+  {en:"Soft Light",ja:"やわらかい光",category:"natural"},
+  {en:"Stay Cozy",ja:"ぬくもりの中で",category:"natural"},
+  {en:"Quiet Joy",ja:"静かな喜び",category:"natural"},
+  {en:"Wild & Free",ja:"自由なまま",category:"natural"},
+  {en:"Chasing Light",ja:"光を追って",category:"photo"},
+  {en:"Frame the Day",ja:"今日を切り取る",category:"photo"},
+  {en:"Through My Lens",ja:"レンズ越しに",category:"photo"},
+  {en:"Keep This Moment",ja:"この瞬間を",category:"photo"},
+  {en:"Found Beauty",ja:"見つけた美しさ",category:"photo"},
+  {en:"Just Breathe",ja:"ただ、深呼吸",category:"hand"},
+  {en:"Make Today",ja:"今日をつくる",category:"hand"},
+  {en:"Dream in Color",ja:"色を夢みて",category:"hand"},
+  {en:"Create with Love",ja:"愛をこめて",category:"hand"},
+  {en:"Shine Quietly",ja:"静かに輝く",category:"hand"},
+  {en:"Old but Gold",ja:"古くても、輝く",category:"retro"},
+  {en:"Vintage Heart",ja:"ヴィンテージな心",category:"retro"},
+  {en:"Timeless Days",ja:"色褪せない日々",category:"retro"},
+  {en:"Faded Memories",ja:"褪せた記憶",category:"retro"},
+  {en:"Paper & Ink",ja:"紙とインク",category:"retro"}
+];
+
+const CATEGORIES = [
+  {id:"all",label:"すべて"},{id:"daily",label:"日常"},{id:"natural",label:"やさしい"},
+  {id:"photo",label:"写真"},{id:"hand",label:"手書き"},{id:"retro",label:"レトロ"},{id:"karhu",label:"カルフ"}
+];
+function catLabel(id){ const c=CATEGORIES.find(c=>c.id===id); return c?c.label:id; }
+/* スプシの日本語カテゴリ → 内部id（英語表記やidをそのまま書いても通る） */
+const CAT_TO_ID = {"すべて":"all","日常":"daily","やさしい":"natural","写真":"photo","手書き":"hand","レトロ":"retro","カルフ":"karhu",
+  "all":"all","daily":"daily","natural":"natural","photo":"photo","hand":"hand","retro":"retro","karhu":"karhu"};
+
+let PHRASES = FALLBACK_PHRASES.slice();
+const $ = id => document.getElementById(id);
+let current=null, lastKey="", favorites=[], activeCategory="all";
+
+function buildPerf(el){ el.innerHTML = Array.from({length:15},()=>"<span></span>").join(""); }
+buildPerf($("perfTop")); buildPerf($("perfBot"));
+(function(){ const d=new Date(); $("dateStamp").textContent = `'${String(d.getFullYear()).slice(2)} ${d.getMonth()+1} ${d.getDate()}`; })();
+
+/* CSVパーサ（クォート対応） */
+function parseCSV(text){
+  const rows=[]; let row=[], field="", inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; }
+      else field+=c;
+    }else{
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(field); field=""; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else if(c!=='\r'){ field+=c; }
+    }
+  }
+  if(field!=="" || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+/* スプシ読み込み */
+async function loadPhrasesFromSheet(){
+  try{
+    const res = await fetch(SHEET_URL, {cache:"no-store"});
+    if(!res.ok) throw new Error("http");
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if(rows.length < 2) throw new Error("empty");
+    const head = rows[0].map(s=>s.trim().toLowerCase());
+    let ei=head.indexOf("en"), ji=head.indexOf("ja"), ci=head.indexOf("category");
+    if(ei<0||ji<0){ ei=0; ji=1; ci=2; } // 見出しが無くても順番で拾う
+    const out=[];
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i]; if(!r) continue;
+      const en=(r[ei]||"").trim(), ja=(r[ji]||"").trim();
+      const catRaw=(ci>=0 ? (r[ci]||"") : "").trim();
+      if(!en||!ja) continue;
+      out.push({en, ja, category: CAT_TO_ID[catRaw] || catRaw || "daily"});
+    }
+    if(out.length){ PHRASES = out; return true; }
+    return false;
+  }catch(e){ return false; }
+}
+
+function keyOf(p){ return p.en+"|"+p.ja; }
+function isFaved(p){ return favorites.some(f=>keyOf(f)===keyOf(p)); }
+function pool(){ return activeCategory==="all"?PHRASES:PHRASES.filter(p=>p.category===activeCategory); }
+
+$("catSelect").addEventListener("change", e=>{ activeCategory=e.target.value; shoot(); });
+
+function shoot(){
+  const p=pool();
+  if(p.length===0){ toast("このカテゴリは空です"); return; }
+  let pick;
+  do{ pick=p[Math.floor(Math.random()*p.length)]; } while(p.length>1 && keyOf(pick)===lastKey);
+  lastKey=keyOf(pick); current=pick;
+
+  const plate=$("plate");
+  $("frameNo").textContent="FRAME "+String(Math.floor(Math.random()*36)+1).padStart(3,"0");
+  $("catTag").textContent = current.category ? "· "+catLabel(current.category) : "";
+
+  plate.classList.add("shooting");
+  setTimeout(()=>{
+    $("pen").textContent=current.en; $("pja").textContent=current.ja;
+    updateFavBtn();
+    plate.classList.remove("developing"); void plate.offsetWidth; plate.classList.add("developing");
+  }, 120);
+  setTimeout(()=> plate.classList.remove("shooting"), 520);
+}
+function updateFavBtn(){
+  const b=$("favBtn");
+  if(current && isFaved(current)){ b.classList.add("faved"); b.textContent="♥"; }
+  else{ b.classList.remove("faved"); b.textContent="♡"; }
+}
+
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));
+  return fallbackCopy(text);
+}
+function fallbackCopy(text){
+  const t=document.createElement("textarea"); t.value=text; t.style.position="fixed"; t.style.opacity="0";
+  document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); }catch(e){} document.body.removeChild(t);
+  return Promise.resolve();
+}
+function toast(msg){ const el=$("toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1600); }
+
+document.querySelectorAll(".plate .phrase").forEach(p=>{
+  p.addEventListener("click", ()=>{
+    const lang=p.dataset.lang;
+    copyText(p.textContent).then(()=>{
+      const tag=$("t"+lang); tag.classList.add("show"); setTimeout(()=>tag.classList.remove("show"),1200);
+      toast("コピーしました — "+p.textContent);
+    });
+  });
+});
+$("copySet").addEventListener("click", ()=>{ if(!current) return; copyText(`${current.en}\n${current.ja}`).then(()=>toast("2行をコピーしました")); });
+$("shutter").addEventListener("click", shoot);
+$("favBtn").addEventListener("click", ()=>{
+  if(!current) return;
+  if(isFaved(current)){ favorites=favorites.filter(f=>keyOf(f)!==keyOf(current)); toast("お気に入りから外しました"); }
+  else{ favorites.unshift({...current}); toast("お気に入りに巻き取りました"); }
+  updateFavBtn(); saveFavs(); renderFavs();
+});
+
+function loadFavs(){ try{ const v=localStorage.getItem("pr_favorites"); if(v) favorites=JSON.parse(v); }catch(e){ favorites=[]; } }
+function saveFavs(){ try{ localStorage.setItem("pr_favorites", JSON.stringify(favorites)); }catch(e){} }
+
+function renderFavs(){
+  const list=$("favList"); $("favCount").textContent=favorites.length+" SAVED";
+  if(favorites.length===0){ list.innerHTML='<div class="fav-empty">まだ一枚もありません。<br>気に入ったフレーズを ♡ で巻き取って。</div>'; return; }
+  list.innerHTML="";
+  favorites.forEach((f,idx)=>{
+    const card=document.createElement("div"); card.className="fav-card";
+    card.innerHTML=`<div class="fen">${esc(f.en)}</div><div class="fja">${esc(f.ja)}</div>
+      <div class="fav-actions"><button data-copy="${idx}">COPY</button><button data-del="${idx}">✕</button></div>`;
+    list.appendChild(card);
+  });
+  list.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
+    const f=favorites[+b.dataset.copy]; copyText(`${f.en}\n${f.ja}`).then(()=>toast("2行をコピーしました"));
+  }));
+  list.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    favorites.splice(+b.dataset.del,1); saveFavs(); renderFavs(); updateFavBtn(); toast("外しました");
+  }));
+}
+function esc(s){ return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* 起動 */
+async function init(){
+  loadFavs(); renderFavs();
+  const ok = await loadPhrasesFromSheet();
+  if(!ok){ $("footer").innerHTML = 'タップで各行をコピー / SET COPY で2行まとめて<br>投稿・カレンダー制作にそのまま貼り付けられます'; }
+  shoot();
+}
+init();
+</script>
+</body>
+</html>
